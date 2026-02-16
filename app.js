@@ -1,6 +1,7 @@
 // Fall Unit Points Calculator
 // - Keeps full precision for all intermediate calculations
 // - Rounds only the final unit total
+// - Export panel avoids clipboard permissions (works on file:// and https)
 
 const els = {
   unitName: document.getElementById("unitName"),
@@ -30,7 +31,9 @@ const els = {
   unroundedTotal: document.getElementById("unroundedTotal"),
   showDecimals: document.getElementById("showDecimals"),
   precisionNote: document.getElementById("precisionNote"),
-  copyBtn: document.getElementById("copyBtn"),
+
+  exportBtn: document.getElementById("exportBtn"),
+  exportBox: document.getElementById("exportBox"),
   resetBtn: document.getElementById("resetBtn"),
 };
 
@@ -62,7 +65,6 @@ function clampInt(n, min, max) {
 function fmt(n, showDecimals) {
   if (!Number.isFinite(n)) return "—";
   if (showDecimals) {
-    // avoid noisy floats; show up to 4 decimals trimmed
     return Number(n.toFixed(4)).toString();
   }
   return Math.round(n).toString();
@@ -127,8 +129,8 @@ function specialRulesCost(stdCount, medCount, strongCount) {
   return total;
 }
 
-// Clipboard text builder
-function buildClipboardText() {
+// Build export text from the *currently displayed* breakdown
+function buildExportText() {
   const name = (els.unitName.value || "").trim() || "Unnamed Unit";
   const unitText = (els.unitBreakdown.textContent || "").trim();
   const weapText = (els.weaponBreakdown.textContent || "").trim();
@@ -155,43 +157,7 @@ function buildClipboardText() {
   parts.push(`Rounded Total: ${rounded}`);
 
   return parts.join("\n");
-async function copyToClipboard(text) {
-  // Try modern clipboard API first, but only if it's likely to be allowed.
-  // Many browsers require HTTPS (secure context) for navigator.clipboard.
-  if (navigator.clipboard && window.isSecureContext) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return;
-    } catch (err) {
-      // Fall through to legacy method
-    }
-  }
-
-  // Legacy fallback: works in more contexts, but can still fail depending on browser settings
-  const ta = document.createElement("textarea");
-  ta.value = text;
-
-  // Avoid zoom/jump on iOS and keep it off-screen
-  ta.style.position = "fixed";
-  ta.style.top = "0";
-  ta.style.left = "0";
-  ta.style.opacity = "0";
-  ta.style.pointerEvents = "none";
-
-  document.body.appendChild(ta);
-
-  ta.focus();
-  ta.select();
-  ta.setSelectionRange(0, ta.value.length); // important for mobile Safari
-
-  const ok = document.execCommand("copy");
-  document.body.removeChild(ta);
-
-  if (!ok) {
-    throw new Error("Copy failed (browser blocked clipboard).");
-  }
 }
-
 
 // ---------- Weapons UI ----------
 function renderWeapons() {
@@ -275,7 +241,7 @@ function renderWeapons() {
     rangedRangeInput.addEventListener("input", () => {
       let v = toInt(rangedRangeInput.value, 5);
       if (v < 5) v = 5;
-      v = Math.round(v / 5) * 5;
+      v = Math.round(v / 5) * 5; // snap to nearest 5
       weapons[idx].rangedRange = v;
       rangedRangeInput.value = v;
       recalc();
@@ -297,13 +263,11 @@ function calcStats() {
   // allow negatives
   const deftness = clampInt(toInt(els.deftness.value, 0), -99, 99);
   const arcane = clampInt(toInt(els.arcane.value, 0), -99, 99);
+  const fight = clampInt(toInt(els.fight.value, 0), -99, 99);
+  const accuracy = clampInt(toInt(els.accuracy.value, 0), -99, 99);
 
   const dodge = clampInt(toInt(els.dodge.value, 6), 0, 99);
   const resistance = clampInt(toInt(els.resistance.value, 2), 0, 99);
-
-  // allow negatives
-  const fight = clampInt(toInt(els.fight.value, 0), -99, 99);
-  const accuracy = clampInt(toInt(els.accuracy.value, 0), -99, 99);
 
   const fullSpeedCost = linearDeltaCost(fullSpeed, 5, 6);
   const cautSpeedCost = linearDeltaCost(cautSpeed, 3, 6);
@@ -442,8 +406,8 @@ function recalc() {
   lines.push(`  Special Rules Total → ${fmt(sr.cost, showDecimals)}`);
 
   const notes = [];
-  if (stats.notes.dodgeClamped) notes.push("Dodge delta exceeds ±4; breakdown uses max table value at ±4.");
-  if (stats.notes.resClamped) notes.push("Resistance delta exceeds ±4; breakdown uses max table value at ±4.");
+  if (stats.notes.dodgeClamped) notes.push("Dodge delta exceeds ±4; uses max table value at ±4.");
+  if (stats.notes.resClamped) notes.push("Resistance delta exceeds ±4; uses max table value at ±4.");
   els.precisionNote.textContent = notes.length ? notes.join(" ") : " ";
 
   const unitNonWeaponTotal = base + stats.subtotal + sr.cost;
@@ -497,6 +461,7 @@ function resetAll() {
   els.srStrong.value = "0";
 
   els.showDecimals.checked = true;
+  els.exportBox.value = "";
 
   weapons = [{ ...DEFAULT_WEAPON }];
   renderWeapons();
@@ -512,19 +477,20 @@ function resetAll() {
   els.addWeaponBtn.addEventListener("click", () => addWeapon());
   els.resetBtn.addEventListener("click", resetAll);
 
-  els.copyBtn.addEventListener("click", async () => {
-    recalc(); // ensure up to date
-    const text = buildClipboardText();
-    try {
-      await copyToClipboard(text);
-      els.copyBtn.textContent = "Copied!";
-      setTimeout(() => (els.copyBtn.textContent = "Copy to clipboard"), 900);
-    } catch (e) {
-      els.copyBtn.textContent = "Copy failed";
-      setTimeout(() => (els.copyBtn.textContent = "Copy to clipboard"), 1200);
-    }
+  els.exportBtn.addEventListener("click", () => {
+    recalc(); // ensure current
+    const text = buildExportText();
+    els.exportBox.value = text;
+
+    // Auto-select for easy Ctrl+C
+    els.exportBox.focus();
+    els.exportBox.select();
+    els.exportBox.setSelectionRange(0, text.length);
+
+    const old = els.exportBtn.textContent;
+    els.exportBtn.textContent = "Selected — Ctrl+C";
+    setTimeout(() => (els.exportBtn.textContent = old), 1200);
   });
 
   recalc();
 })();
-

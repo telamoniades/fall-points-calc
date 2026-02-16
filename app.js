@@ -155,25 +155,43 @@ function buildClipboardText() {
   parts.push(`Rounded Total: ${rounded}`);
 
   return parts.join("\n");
-}
-
 async function copyToClipboard(text) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
+  // Try modern clipboard API first, but only if it's likely to be allowed.
+  // Many browsers require HTTPS (secure context) for navigator.clipboard.
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch (err) {
+      // Fall through to legacy method
+    }
   }
 
+  // Legacy fallback: works in more contexts, but can still fail depending on browser settings
   const ta = document.createElement("textarea");
   ta.value = text;
-  ta.setAttribute("readonly", "");
+
+  // Avoid zoom/jump on iOS and keep it off-screen
   ta.style.position = "fixed";
-  ta.style.left = "-9999px";
   ta.style.top = "0";
+  ta.style.left = "0";
+  ta.style.opacity = "0";
+  ta.style.pointerEvents = "none";
+
   document.body.appendChild(ta);
+
+  ta.focus();
   ta.select();
-  document.execCommand("copy");
+  ta.setSelectionRange(0, ta.value.length); // important for mobile Safari
+
+  const ok = document.execCommand("copy");
   document.body.removeChild(ta);
+
+  if (!ok) {
+    throw new Error("Copy failed (browser blocked clipboard).");
+  }
 }
+
 
 // ---------- Weapons UI ----------
 function renderWeapons() {
@@ -509,3 +527,4 @@ function resetAll() {
 
   recalc();
 })();
+

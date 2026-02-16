@@ -61,16 +61,14 @@
 
         <label class="field">
           <span>Deftness</span>
-          <!-- allow negatives -->
           <input id="deftness" type="number" step="1" value="0" />
-          <span class="hint">Base 0, +1 per point</span>
+          <span class="hint">Base 0, +1 per point (can be negative)</span>
         </label>
 
         <label class="field">
           <span>Arcane</span>
-          <!-- allow negatives -->
           <input id="arcane" type="number" step="1" value="0" />
-          <span class="hint">Base 0, +1 per point</span>
+          <span class="hint">Base 0, +1 per point (can be negative)</span>
         </label>
 
         <label class="field">
@@ -87,16 +85,14 @@
 
         <label class="field">
           <span>Fight (Fi)</span>
-          <!-- already allows negatives -->
           <input id="fight" type="number" step="1" value="0" />
-          <span class="hint">Used by melee attacks</span>
+          <span class="hint">Used by melee attacks (can be negative)</span>
         </label>
 
         <label class="field">
           <span>Accuracy (Ac)</span>
-          <!-- already allows negatives -->
           <input id="accuracy" type="number" step="1" value="0" />
-          <span class="hint">Used by ranged attacks</span>
+          <span class="hint">Used by ranged attacks (can be negative)</span>
         </label>
       </div>
     </section>
@@ -134,6 +130,7 @@
       <div id="srWarning" class="warning hidden"></div>
     </section>
 
+    <!-- BREAKDOWN SECTION (this is the "Breakdown card") -->
     <section class="card">
       <div class="row row-between row-center">
         <h2>Breakdown</h2>
@@ -142,7 +139,7 @@
             <input id="showDecimals" type="checkbox" checked />
             Show decimals in breakdown
           </label>
-          <button id="copyBtn" class="btn">Copy to clipboard</button>
+          <button id="exportBtn" class="btn">Export text</button>
           <button id="resetBtn" class="btn btn-ghost">Reset</button>
         </div>
       </div>
@@ -166,6 +163,18 @@
           <div class="big-number"><span id="unroundedTotal">—</span></div>
         </div>
       </div>
+
+      <!-- EXPORT PANEL (inside the Breakdown section) -->
+      <hr class="sep" />
+      <div class="row row-between row-center">
+        <h3>Export</h3>
+        <div class="muted small">Click “Export text” then press Ctrl+C.</div>
+      </div>
+
+      <label class="field">
+        <span>Export Text (auto-selects)</span>
+        <textarea id="exportBox" class="export-box" rows="10" readonly></textarea>
+      </label>
     </section>
   </main>
 

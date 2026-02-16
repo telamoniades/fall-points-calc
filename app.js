@@ -30,6 +30,7 @@ const els = {
   unroundedTotal: document.getElementById("unroundedTotal"),
   showDecimals: document.getElementById("showDecimals"),
   precisionNote: document.getElementById("precisionNote"),
+  copyBtn: document.getElementById("copyBtn"),
   resetBtn: document.getElementById("resetBtn"),
 };
 
@@ -76,8 +77,6 @@ function piecewiseSymmetricCost(actual, base, tableByAbsDelta) {
   const abs = Math.abs(delta);
   if (abs === 0) return 0;
 
-  // If beyond provided table, extend using last entry's "total at that delta" slope? Not specified.
-  // We'll treat out-of-table as illegal-ish but still clamp to the max delta provided.
   const maxDelta = Math.max(...Object.keys(tableByAbsDelta).map(k => Number(k)));
   const usedAbs = abs > maxDelta ? maxDelta : abs;
 
@@ -86,27 +85,20 @@ function piecewiseSymmetricCost(actual, base, tableByAbsDelta) {
 }
 
 function pierceCost(p) {
-  // Base 0. +1=2, +2=5, +3=9
   const table = { 0: 0, 1: 2, 2: 5, 3: 9 };
   return table[p] ?? 0;
 }
 
 function meleeRangeCost(r) {
-  // 1 -> 0, 2 -> 3
   return r === 2 ? 3 : 0;
 }
 
 function rangedRangeCost(rangeInches, attacks) {
-  // Range bands: Rb = round(Rg/5)
-  // Cost: Rb + (Rb)(0.5)(NoA)
   const rb = Math.round(rangeInches / 5);
   return rb + (rb * 0.5 * attacks);
 }
 
 function attacksTierSplit(noa) {
-  // AiT1 = min(NoA, 5)
-  // AiT2 = min(max(NoA-5,0), 3)
-  // AiT3 = min(max(NoA-8,0), 4)
   const a1 = Math.min(noa, 5);
   const a2 = Math.min(Math.max(noa - 5, 0), 3);
   const a3 = Math.min(Math.max(noa - 8, 0), 4);
@@ -114,33 +106,73 @@ function attacksTierSplit(noa) {
 }
 
 function meleeAttacksCost(noa, fight) {
-  // Tier 1: (AiT)(2)(5+Fi)/6
-  // Tier 2: (AiT)(3)(5+Fi)/6
-  // Tier 3: (AiT)(4)(5+Fi)/6
   const { a1, a2, a3 } = attacksTierSplit(noa);
   const k = (5 + fight) / 6;
   return (a1 * 2 * k) + (a2 * 3 * k) + (a3 * 4 * k);
 }
 
 function rangedAttacksCost(noa, accuracy) {
-  // Same tiers, but uses Ac instead of Fi
   const { a1, a2, a3 } = attacksTierSplit(noa);
   const k = (5 + accuracy) / 6;
   return (a1 * 2 * k) + (a2 * 3 * k) + (a3 * 4 * k);
 }
 
 function specialRulesCost(stdCount, medCount, strongCount) {
-  // Standard always 0.
-  // Medium: 1st=5, 2nd=4, 3rd=3
-  // Strong: 1st=10, 2nd=9, 3rd=8
   const medPrices = [5, 4, 3];
   const strongPrices = [10, 9, 8];
 
   let total = 0;
   for (let i = 0; i < medCount; i++) total += medPrices[i] ?? 0;
   for (let i = 0; i < strongCount; i++) total += strongPrices[i] ?? 0;
-  // stdCount ignored (0 cost)
   return total;
+}
+
+// Clipboard text builder
+function buildClipboardText() {
+  const name = (els.unitName.value || "").trim() || "Unnamed Unit";
+  const unitText = (els.unitBreakdown.textContent || "").trim();
+  const weapText = (els.weaponBreakdown.textContent || "").trim();
+
+  const unrounded = (els.unroundedTotal.textContent || "—").trim();
+  const rounded = (els.finalPoints.textContent || "—").trim();
+
+  const parts = [];
+  parts.push(name);
+  parts.push("");
+
+  if (unitText) {
+    parts.push(unitText);
+    parts.push("");
+  }
+
+  if (weapText) {
+    parts.push("Weapons:");
+    parts.push(weapText);
+    parts.push("");
+  }
+
+  parts.push(`Unrounded Total: ${unrounded}`);
+  parts.push(`Rounded Total: ${rounded}`);
+
+  return parts.join("\n");
+}
+
+async function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  ta.style.top = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  document.body.removeChild(ta);
 }
 
 // ---------- Weapons UI ----------
@@ -223,10 +255,8 @@ function renderWeapons() {
     });
 
     rangedRangeInput.addEventListener("input", () => {
-      // allow any integer but we will round to nearest 5 for banding safety
       let v = toInt(rangedRangeInput.value, 5);
       if (v < 5) v = 5;
-      // snap to nearest 5 inches
       v = Math.round(v / 5) * 5;
       weapons[idx].rangedRange = v;
       rangedRangeInput.value = v;
@@ -245,21 +275,23 @@ function calcUnitBase(wounds) {
 function calcStats() {
   const fullSpeed = clampInt(toInt(els.fullSpeed.value, 5), 0, 99);
   const cautSpeed = clampInt(toInt(els.cautSpeed.value, 3), 0, 99);
-  const deftness = clampInt(toInt(els.deftness.value, 0), 0, 99);
-  const arcane = clampInt(toInt(els.arcane.value, 0), 0, 99);
+
+  // allow negatives
+  const deftness = clampInt(toInt(els.deftness.value, 0), -99, 99);
+  const arcane = clampInt(toInt(els.arcane.value, 0), -99, 99);
+
   const dodge = clampInt(toInt(els.dodge.value, 6), 0, 99);
   const resistance = clampInt(toInt(els.resistance.value, 2), 0, 99);
 
-  const fight = toInt(els.fight.value, 0);
-  const accuracy = toInt(els.accuracy.value, 0);
+  // allow negatives
+  const fight = clampInt(toInt(els.fight.value, 0), -99, 99);
+  const accuracy = clampInt(toInt(els.accuracy.value, 0), -99, 99);
 
-  // Linear
   const fullSpeedCost = linearDeltaCost(fullSpeed, 5, 6);
   const cautSpeedCost = linearDeltaCost(cautSpeed, 3, 6);
   const deftCost = linearDeltaCost(deftness, 0, 1);
   const arcCost = linearDeltaCost(arcane, 0, 1);
 
-  // Piecewise
   const dodgeTable = { 1: 2, 2: 5, 3: 9, 4: 14 };
   const resTable = { 1: 3, 2: 7, 3: 12, 4: 18 };
 
@@ -319,7 +351,6 @@ function calcSpecialRules() {
   const med = clampInt(toInt(els.srMedium.value, 0), 0, 3);
   const strong = clampInt(toInt(els.srStrong.value, 0), 0, 3);
 
-  // Enforce max total 3 (warn, but still compute using clamped values)
   const total = std + med + strong;
 
   let warning = "";
@@ -340,7 +371,6 @@ function recalc() {
   const stats = calcStats();
   const sr = calcSpecialRules();
 
-  // Special rules warning display
   if (sr.warning) {
     els.srWarning.textContent = sr.warning;
     els.srWarning.classList.remove("hidden");
@@ -349,7 +379,6 @@ function recalc() {
     els.srWarning.textContent = "";
   }
 
-  // Weapons
   const weaponLines = [];
   let weaponsTotal = 0;
 
@@ -371,7 +400,6 @@ function recalc() {
     weaponLines.push(detail);
   });
 
-  // Unit breakdown (non-weapon)
   const lines = [];
 
   lines.push(`Wounds base: ${wounds}W → ${fmt(base, showDecimals)}`);
@@ -395,7 +423,6 @@ function recalc() {
   lines.push(`  Strong x${sr.strong} → ${fmt(specialRulesCost(0, 0, sr.strong), showDecimals)}`);
   lines.push(`  Special Rules Total → ${fmt(sr.cost, showDecimals)}`);
 
-  // Precision note about clamping piecewise deltas beyond 4
   const notes = [];
   if (stats.notes.dodgeClamped) notes.push("Dodge delta exceeds ±4; breakdown uses max table value at ±4.");
   if (stats.notes.resClamped) notes.push("Resistance delta exceeds ±4; breakdown uses max table value at ±4.");
@@ -466,6 +493,19 @@ function resetAll() {
 
   els.addWeaponBtn.addEventListener("click", () => addWeapon());
   els.resetBtn.addEventListener("click", resetAll);
+
+  els.copyBtn.addEventListener("click", async () => {
+    recalc(); // ensure up to date
+    const text = buildClipboardText();
+    try {
+      await copyToClipboard(text);
+      els.copyBtn.textContent = "Copied!";
+      setTimeout(() => (els.copyBtn.textContent = "Copy to clipboard"), 900);
+    } catch (e) {
+      els.copyBtn.textContent = "Copy failed";
+      setTimeout(() => (els.copyBtn.textContent = "Copy to clipboard"), 1200);
+    }
+  });
 
   recalc();
 })();

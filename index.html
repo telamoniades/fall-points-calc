@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fall Unit Points Calculator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="container">
+      <h1>Fall Unit Points Calculator</h1>
+      <p class="muted">
+        Keeps full precision internally. Rounds only the final unit total.
+      </p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Unit</h2>
+
+      <div class="grid grid-3">
+        <label class="field">
+          <span>Unit Name</span>
+          <input id="unitName" type="text" placeholder="e.g., Lionheart Foot Knights" />
+        </label>
+
+        <label class="field">
+          <span>Wounds</span>
+          <select id="wounds">
+            <option value="3">3 (base 30p)</option>
+            <option value="5">5 (base 50p)</option>
+          </select>
+        </label>
+
+        <div class="field">
+          <span>Final Points</span>
+          <div class="big-number">
+            <span id="finalPoints">—</span>
+            <span class="muted small">rounded</span>
+          </div>
+        </div>
+      </div>
+
+      <hr class="sep" />
+
+      <h3>Core Stats</h3>
+      <div class="grid grid-4">
+        <label class="field">
+          <span>Full Speed</span>
+          <input id="fullSpeed" type="number" step="1" min="0" value="5" />
+          <span class="hint">Base 5, ±6 per inch</span>
+        </label>
+
+        <label class="field">
+          <span>Cautious Speed</span>
+          <input id="cautSpeed" type="number" step="1" min="0" value="3" />
+          <span class="hint">Base 3, ±6 per inch</span>
+        </label>
+
+        <label class="field">
+          <span>Deftness</span>
+          <input id="deftness" type="number" step="1" min="0" value="0" />
+          <span class="hint">Base 0, +1 per point</span>
+        </label>
+
+        <label class="field">
+          <span>Arcane</span>
+          <input id="arcane" type="number" step="1" min="0" value="0" />
+          <span class="hint">Base 0, +1 per point</span>
+        </label>
+
+        <label class="field">
+          <span>Dodge</span>
+          <input id="dodge" type="number" step="1" min="0" value="6" />
+          <span class="hint">Base 6, piecewise</span>
+        </label>
+
+        <label class="field">
+          <span>Resistance</span>
+          <input id="resistance" type="number" step="1" min="0" value="2" />
+          <span class="hint">Base 2, piecewise</span>
+        </label>
+
+        <label class="field">
+          <span>Fight (Fi)</span>
+          <input id="fight" type="number" step="1" value="0" />
+          <span class="hint">Used by melee attacks</span>
+        </label>
+
+        <label class="field">
+          <span>Accuracy (Ac)</span>
+          <input id="accuracy" type="number" step="1" value="0" />
+          <span class="hint">Used by ranged attacks</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row row-between row-center">
+        <h2>Weapons</h2>
+        <button id="addWeaponBtn" class="btn">+ Add Weapon</button>
+      </div>
+
+      <div id="weaponsList" class="stack"></div>
+    </section>
+
+    <section class="card">
+      <h2>Special Rules</h2>
+      <p class="muted small">
+        Up to three total. Standard = 0. Medium and Strong discount on repeats within their tier.
+      </p>
+
+      <div class="grid grid-3">
+        <label class="field">
+          <span>Standard (count)</span>
+          <input id="srStandard" type="number" step="1" min="0" max="3" value="0" />
+        </label>
+        <label class="field">
+          <span>Medium (count)</span>
+          <input id="srMedium" type="number" step="1" min="0" max="3" value="0" />
+        </label>
+        <label class="field">
+          <span>Strong (count)</span>
+          <input id="srStrong" type="number" step="1" min="0" max="3" value="0" />
+        </label>
+      </div>
+
+      <div id="srWarning" class="warning hidden"></div>
+    </section>
+
+    <section class="card">
+      <div class="row row-between row-center">
+        <h2>Breakdown</h2>
+        <div class="row row-center gap">
+          <label class="row row-center gap small">
+            <input id="showDecimals" type="checkbox" checked />
+            Show decimals in breakdown
+          </label>
+          <button id="resetBtn" class="btn btn-ghost">Reset</button>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div>
+          <h3>Unit Costs</h3>
+          <div id="unitBreakdown" class="breakdown"></div>
+        </div>
+        <div>
+          <h3>Weapon Costs</h3>
+          <div id="weaponBreakdown" class="breakdown"></div>
+        </div>
+      </div>
+
+      <hr class="sep" />
+      <div class="row row-between">
+        <div class="muted small" id="precisionNote"></div>
+        <div class="totals">
+          <div class="muted small">Unrounded Total</div>
+          <div class="big-number"><span id="unroundedTotal">—</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <template id="weaponTemplate">
+    <div class="weapon card-sub">
+      <div class="row row-between row-center">
+        <h3 class="weapon-title">Weapon</h3>
+        <button class="btn btn-danger btn-small weapon-remove">Remove</button>
+      </div>
+
+      <div class="grid grid-4">
+        <label class="field">
+          <span>Type</span>
+          <select class="weapon-type">
+            <option value="melee">Melee</option>
+            <option value="ranged">Ranged</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Designation</span>
+          <select class="weapon-designation">
+            <option value="primary">Primary (full cost)</option>
+            <option value="secondary">Secondary (half cost)</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Attacks (NoA)</span>
+          <input class="weapon-attacks" type="number" step="1" min="1" max="12" value="5" />
+          <span class="hint">Tiered 1–5, 6–8, 9–12</span>
+        </label>
+
+        <label class="field">
+          <span>Pierce</span>
+          <input class="weapon-pierce" type="number" step="1" min="0" max="3" value="0" />
+          <span class="hint">0 / +1 / +2 / +3</span>
+        </label>
+
+        <label class="field weapon-range-melee">
+          <span>Melee Range</span>
+          <select class="weapon-range-melee-select">
+            <option value="1">1" (0p)</option>
+            <option value="2">2" (3p)</option>
+          </select>
+        </label>
+
+        <label class="field weapon-range-ranged hidden">
+          <span>Ranged Range (inches)</span>
+          <input class="weapon-range-ranged-input" type="number" step="5" min="5" value="15" />
+          <span class="hint">Bands of 5". Rb = round(Rg/5)</span>
+        </label>
+      </div>
+
+      <div class="muted small weapon-note"></div>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

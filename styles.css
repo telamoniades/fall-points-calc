@@ -71,7 +71,7 @@ p{ line-height:1.35; }
 
 .field{ display:flex; flex-direction:column; gap:6px; }
 .field span:first-child{ font-size:12px; color:var(--muted); }
-.field input, .field select{
+.field input, .field select, .field textarea{
   background:#0f1320;
   color:var(--text);
   border:1px solid rgba(255,255,255,.12);
@@ -79,7 +79,7 @@ p{ line-height:1.35; }
   padding:10px 10px;
   outline:none;
 }
-.field input:focus, .field select:focus{
+.field input:focus, .field select:focus, .field textarea:focus{
   border-color:rgba(43,124,255,.85);
   box-shadow:0 0 0 3px rgba(43,124,255,.18);
 }
@@ -135,6 +135,18 @@ p{ line-height:1.35; }
   line-height:1.4;
   min-height:88px;
   white-space:pre-wrap;
+}
+
+.export-box{
+  width:100%;
+  background:#0f1320;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  padding:10px;
+  font-family:var(--mono);
+  font-size:12px;
+  line-height:1.4;
+  resize:vertical;
 }
 
 .hidden{ display:none !important; }

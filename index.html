@@ -61,13 +61,15 @@
 
         <label class="field">
           <span>Deftness</span>
-          <input id="deftness" type="number" step="1" min="0" value="0" />
+          <!-- allow negatives -->
+          <input id="deftness" type="number" step="1" value="0" />
           <span class="hint">Base 0, +1 per point</span>
         </label>
 
         <label class="field">
           <span>Arcane</span>
-          <input id="arcane" type="number" step="1" min="0" value="0" />
+          <!-- allow negatives -->
+          <input id="arcane" type="number" step="1" value="0" />
           <span class="hint">Base 0, +1 per point</span>
         </label>
 
@@ -85,12 +87,14 @@
 
         <label class="field">
           <span>Fight (Fi)</span>
+          <!-- already allows negatives -->
           <input id="fight" type="number" step="1" value="0" />
           <span class="hint">Used by melee attacks</span>
         </label>
 
         <label class="field">
           <span>Accuracy (Ac)</span>
+          <!-- already allows negatives -->
           <input id="accuracy" type="number" step="1" value="0" />
           <span class="hint">Used by ranged attacks</span>
         </label>
@@ -138,6 +142,7 @@
             <input id="showDecimals" type="checkbox" checked />
             Show decimals in breakdown
           </label>
+          <button id="copyBtn" class="btn">Copy to clipboard</button>
           <button id="resetBtn" class="btn btn-ghost">Reset</button>
         </div>
       </div>
